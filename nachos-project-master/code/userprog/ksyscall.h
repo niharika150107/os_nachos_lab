@@ -10,7 +10,7 @@
 
 #ifndef __USERPROG_KSYSCALL_H__
 #define __USERPROG_KSYSCALL_H__
-
+#define INT32_MIN 0
 #include "kernel.h"
 #include "synchconsole.h"
 #include "ksyscallhelper.h"
