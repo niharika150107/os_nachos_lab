@@ -1,0 +1,45 @@
+diff --git a/nachos-project-master/code/test/add.c b/nachos-project-master/code/test/add.c
+index 70b6925..c4f2b33 100644
+--- a/nachos-project-master/code/test/add.c
++++ b/nachos-project-master/code/test/add.c
+@@ -9,8 +9,13 @@
+ 
+ int main() {
+     int result;
+-
+-    result = Add(42, 23);
++    int i,j;
++    for(i=0;i<10;i++){
++	    for(j=0;j<10000;j++){
++	    }
++	    PrintString("In Child\n");
++    }
++   // result = Add(42, 23);
+ 
+     Halt();
+     /* not reached */
+diff --git a/nachos-project-master/code/test/exec.c b/nachos-project-master/code/test/exec.c
+index feadac1..5fb0f29 100644
+--- a/nachos-project-master/code/test/exec.c
++++ b/nachos-project-master/code/test/exec.c
+@@ -8,10 +8,18 @@
+ 
+ int main() {
+     int pid;
+-    pid = Exec("num_io");
++    int i,j;
++    PrintString("--Starting in Parent--\n");
++    pid = Exec("../test/add");
+     if (pid < 0) {
+         Write("Exec failed: ", 14, stdout);
+         PrintNum(pid);
+-    } else
++    } else{
++	    for(i=0;i<10;i++){
++		    for(j=0;j<10000;j++){
++		    }
++		    PrintString("In Parent\n");
++	    }
+         Join(pid);
++    }
+ }

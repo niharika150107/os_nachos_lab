@@ -9,8 +9,13 @@
 
 int main() {
     int result;
-
-    result = Add(42, 23);
+    int i,j;
+    for(i=0;i<10;i++){
+	    for(j=0;j<10000;j++){
+	    }
+	    PrintString("In Child\n");
+    }
+   // result = Add(42, 23);
 
     Halt();
     /* not reached */
