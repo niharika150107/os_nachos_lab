@@ -49,6 +49,8 @@
 #define SC_Signal 53
 #define SC_GetPid 54
 #define SC_Abs 55
+#define SC_Sleep 56
+
 #ifndef IN_ASM
 
 /* The system call interface.  These are the operations the Nachos
@@ -69,6 +71,7 @@ void Halt();
  */
 
 int Add(int op1, int op2);
+void Sleep(int time);
 
 int ReadNum();
 

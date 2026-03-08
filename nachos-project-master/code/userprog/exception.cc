@@ -154,6 +154,12 @@ void handle_SC_Add() {
     return move_program_counter();
 }
 
+void handle_SC_Sleep() {
+       int timeReq = (int)kernel->machine->ReadRegister(4);
+       SysSleep(timeReq);
+       return move_program_counter();
+}
+
 void handle_SC_Abs() {
     DEBUG(dbgSys, "Abs " << kernel->machine->ReadRegister(4) << "\n");
 
@@ -437,6 +443,8 @@ void ExceptionHandler(ExceptionType which) {
                     return handle_SC_Add();
 		case SC_Abs:
 		    return handle_SC_Abs();
+		case SC_Sleep:
+                   return handle_SC_Sleep();
                 case SC_ReadNum:
                     return handle_SC_ReadNum();
                 case SC_PrintNum:

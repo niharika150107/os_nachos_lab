@@ -1,0 +1,259 @@
+diff --git a/nachos-project-master/code/lib/list.h b/nachos-project-master/code/lib/list.h
+index 3ce9553..a753d12 100644
+--- a/nachos-project-master/code/lib/list.h
++++ b/nachos-project-master/code/lib/list.h
+@@ -71,7 +71,7 @@ class List {
+     void SelfTest(T *p, int numEntries);
+     // verify module is working
+ 
+-   protected:
++//   protected:
+     ListElement<T> *first;  // Head of the list, NULL if list is empty
+     ListElement<T> *last;   // Last element of list
+     int numInList;          // number of elements in list
+diff --git a/nachos-project-master/code/machine/interrupt.cc b/nachos-project-master/code/machine/interrupt.cc
+index 4ed8291..4e1c477 100644
+--- a/nachos-project-master/code/machine/interrupt.cc
++++ b/nachos-project-master/code/machine/interrupt.cc
+@@ -158,6 +158,14 @@ void Interrupt::OneTick() {
+                                  // (interrupt handlers run with
+                                  // interrupts disabled)
+     CheckIfDue(FALSE);           // check for pending interrupts
++    bool someThreadWoken = kernel->scheduler->checkBlockedList(kernel->stats->totalTicks, false);
++    if(someThreadWoken) {
++	    cout << "Yes !! Found a thread woken when running:" <<kernel->currentThread->getName()<< endl;
++            status = SystemMode;
++            kernel->currentThread->Yield();
++            status = oldStatus;
++    }
++
+     ChangeLevel(IntOff, IntOn);  // re-enable interrupts
+     if (yieldOnReturn) {         // if the timer device handler asked
+                                  // for a context switch, ok to do it now
+diff --git a/nachos-project-master/code/test/Makefile b/nachos-project-master/code/test/Makefile
+index 3cce005..49eabf9 100644
+--- a/nachos-project-master/code/test/Makefile
++++ b/nachos-project-master/code/test/Makefile
+@@ -112,7 +112,7 @@ ifeq ($(hosttype),unknown)
+ PROGRAMS = unknownhost
+ else
+ # change this if you create a new test program!
+-PROGRAMS = add2 abs add halt shell matmult sort segments test_syscall num_io char_io random str_io ascii bubblesort help create_file open_file readwrite exec test_sem sinhvien voinuoc main
++PROGRAMS = sleep  add2 abs add halt shell matmult sort segments test_syscall num_io char_io random str_io ascii bubblesort help create_file open_file readwrite exec test_sem sinhvien voinuoc main
+ endif
+ 
+ all: $(PROGRAMS)
+@@ -139,6 +139,12 @@ add2: add2.o start.o
+ 	$(LD) $(LDFLAGS) start.o add2.o -o add2.coff
+ 	$(COFF2NOFF) add2.coff add2
+ 
++sleep.o: sleep.c
++	$(CC) $(CFLAGS) -c sleep.c
++
++sleep: sleep.o start.o
++	$(LD) $(LDFLAGS) start.o sleep.o -o sleep.coff
++	$(COFF2NOFF) sleep.coff sleep
+ 
+ abs.o: abs.c
+ 	$(CC) $(CFLAGS) -c abs.c
+diff --git a/nachos-project-master/code/threads/scheduler.cc b/nachos-project-master/code/threads/scheduler.cc
+index 97ace61..9f685d0 100644
+--- a/nachos-project-master/code/threads/scheduler.cc
++++ b/nachos-project-master/code/threads/scheduler.cc
+@@ -26,6 +26,21 @@
+ int compare(Thread* x,Thread* y){
+ 	return y->priority-x->priority;
+ }
++
++class WakeUpCallback : public CallBackObj {
++       public:
++               void CallBack() {
++                       kernel->scheduler->checkBlockedList(kernel->stats->totalTicks, false);
++               }
++};
++
++// Defining the implementation of the class SleepingThread
++
++SleepingThread::SleepingThread(Thread* thread, int time){
++       sleptThread = thread;
++       whenToWake = time;
++}
++
+ //----------------------------------------------------------------------
+ // Scheduler::Scheduler
+ // 	Initialize the list of ready but not running threads.
+@@ -34,6 +49,7 @@ int compare(Thread* x,Thread* y){
+ 
+ Scheduler::Scheduler() {
+     readyList = new SortedList<Thread *>(compare);
++    blockedList = new List<SleepingThread*>;
+     toBeDestroyed = NULL;
+ }
+ 
+@@ -44,6 +60,61 @@ Scheduler::Scheduler() {
+ 
+ Scheduler::~Scheduler() { delete readyList; }
+ 
++// Scheduler::pushIntoBlockedList
++//     Adds a new thread into the blockedList indicating they are sleeping.
++
++void Scheduler::pushIntoBlockedList(Thread* thread, int time) {
++       if(thread == NULL){
++               cout << "Thread passed for pushing into blockedList is NULL"<<endl;
++               ASSERT(thread != NULL);
++       }
++       thread->setStatus(BLOCKED);
++       IntStatus oldLevel = kernel->interrupt->SetLevel(IntOff);
++       SleepingThread* goingToSleep = new SleepingThread(thread, time);
++        blockedList->Append(goingToSleep);
++
++       WakeUpCallback* wcb = new WakeUpCallback();
++
++       kernel->interrupt->Schedule(wcb, time, TimerInt);
++       Thread* nextThread;
++       while((nextThread = this->FindNextToRun()) == NULL){
++               //this->checkBlockedList(kernel->stats->totalTicks, true);
++               kernel->interrupt->Idle();
++       }
++       this->Run(nextThread, FALSE);
++//     readyList->Remove(thread);
++       kernel->interrupt->SetLevel(oldLevel);
++}
++// Scheduler::checkBlockedList
++//     Iterates through the blocked list and releases those threads from BLOCKED
++//     state to READY state.
++
++bool Scheduler::checkBlockedList(int currentTime, bool advanceTime) {
++       if(advanceTime){
++               kernel->stats->totalTicks += 1;
++               //cout<<"Advancing the clock"<<endl;
++       }
++       //cout<<"calling check inside blocked list"<<endl;
++       ListElement<SleepingThread*> *ptr;
++       bool someThreadWoken = false;
++
++       for (ptr = blockedList->first; ptr != NULL; ptr = ptr->next) {
++	//cout<<"";
++               cout<<"Thread to wake up at:"<<ptr->item->whenToWake<<"while current is at:"<<kernel->stats->totalTicks<<endl;
++               volatile int currentTicks = kernel->stats->totalTicks;
++
++               if(ptr->item->whenToWake <= currentTicks) {
++                       SleepingThread* toBeWoken = ptr->item;
++                       blockedList->Remove(toBeWoken);
++                       readyList->Insert(toBeWoken->sleptThread);
++                       toBeWoken->sleptThread->setStatus(READY);
++               //      cout << "Woken up a thread with name:" << toBeWoken->sleptThread->getName()<<endl;
++                       someThreadWoken = true;
++               }
++       }
++       return someThreadWoken;
++}
++
+ //----------------------------------------------------------------------
+ // Scheduler::ReadyToRun
+ // 	Mark a thread as ready, but not running.
+diff --git a/nachos-project-master/code/threads/scheduler.h b/nachos-project-master/code/threads/scheduler.h
+index 920ed6e..8faf9e5 100644
+--- a/nachos-project-master/code/threads/scheduler.h
++++ b/nachos-project-master/code/threads/scheduler.h
+@@ -13,6 +13,16 @@
+ #include "list.h"
+ #include "thread.h"
+ 
++// The following class defined is used for storing the thread that is sleeping and the time at which the thread has to be woken up.
++
++class SleepingThread {
++        public:
++                SleepingThread(Thread* thread, int time);
++                Thread* sleptThread;
++                int whenToWake;
++};
++
++
+ // The following class defines the scheduler/dispatcher abstraction --
+ // the data structures and operations needed to keep track of which
+ // thread is running, and which threads are ready but not running.
+@@ -35,7 +45,21 @@ class Scheduler {
+ 
+     // SelfTest for scheduler is implemented in class Thread
+ 
++    // Check if the blockedList is empty -- Might be required in future.
++
++    bool isBlockedListEmpty();
++
++    // Function for pushing a new thread into blockedList
++    void pushIntoBlockedList(Thread* thread, int time);
++
++    // Function for checking if there is any thread that needs to be woken up from the blocked list.
++    bool checkBlockedList(int currentTime, bool advanceTime);
++
++
++
+    private:
++    List<SleepingThread*>* blockedList; // queue for threads that in blocked state and are needed to be woken up
++
+     SortedList<Thread*>* readyList;  // queue of threads that are ready to run,
+                                // but not running
+     Thread* toBeDestroyed;     // finishing thread to be destroyed
+diff --git a/nachos-project-master/code/userprog/exception.cc b/nachos-project-master/code/userprog/exception.cc
+index bf12713..d9edf16 100644
+--- a/nachos-project-master/code/userprog/exception.cc
++++ b/nachos-project-master/code/userprog/exception.cc
+@@ -154,6 +154,12 @@ void handle_SC_Add() {
+     return move_program_counter();
+ }
+ 
++void handle_SC_Sleep() {
++       int timeReq = (int)kernel->machine->ReadRegister(4);
++       SysSleep(timeReq);
++       return move_program_counter();
++}
++
+ void handle_SC_Abs() {
+     DEBUG(dbgSys, "Abs " << kernel->machine->ReadRegister(4) << "\n");
+ 
+@@ -437,6 +443,8 @@ void ExceptionHandler(ExceptionType which) {
+                     return handle_SC_Add();
+ 		case SC_Abs:
+ 		    return handle_SC_Abs();
++		case SC_Sleep:
++                   return handle_SC_Sleep();
+                 case SC_ReadNum:
+                     return handle_SC_ReadNum();
+                 case SC_PrintNum:
+diff --git a/nachos-project-master/code/userprog/ksyscall.h b/nachos-project-master/code/userprog/ksyscall.h
+index a9add5c..6541bd8 100644
+--- a/nachos-project-master/code/userprog/ksyscall.h
++++ b/nachos-project-master/code/userprog/ksyscall.h
+@@ -27,6 +27,10 @@ int SysAbs(int op1){
+ 		return -op1;
+ 	}
+ }
++void SysSleep(int time){
++       int whenToWake = kernel->stats->totalTicks + time;
++       kernel->scheduler->pushIntoBlockedList(kernel->currentThread, whenToWake);
++}
+ int SysReadNum() {
+     readUntilBlank();
+ 
+diff --git a/nachos-project-master/code/userprog/syscall.h b/nachos-project-master/code/userprog/syscall.h
+index c5c3339..064c8e9 100644
+--- a/nachos-project-master/code/userprog/syscall.h
++++ b/nachos-project-master/code/userprog/syscall.h
+@@ -49,6 +49,8 @@
+ #define SC_Signal 53
+ #define SC_GetPid 54
+ #define SC_Abs 55
++#define SC_Sleep 56
++
+ #ifndef IN_ASM
+ 
+ /* The system call interface.  These are the operations the Nachos
+@@ -69,6 +71,7 @@ void Halt();
+  */
+ 
+ int Add(int op1, int op2);
++void Sleep(int time);
+ 
+ int ReadNum();
+ 

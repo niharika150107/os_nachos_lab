@@ -27,6 +27,10 @@ int SysAbs(int op1){
 		return -op1;
 	}
 }
+void SysSleep(int time){
+       int whenToWake = kernel->stats->totalTicks + time;
+       kernel->scheduler->pushIntoBlockedList(kernel->currentThread, whenToWake);
+}
 int SysReadNum() {
     readUntilBlank();
 

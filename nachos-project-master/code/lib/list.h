@@ -71,7 +71,7 @@ class List {
     void SelfTest(T *p, int numEntries);
     // verify module is working
 
-   protected:
+//   protected:
     ListElement<T> *first;  // Head of the list, NULL if list is empty
     ListElement<T> *last;   // Last element of list
     int numInList;          // number of elements in list
