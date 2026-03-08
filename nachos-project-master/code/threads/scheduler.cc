@@ -23,6 +23,9 @@
 #include "scheduler.h"
 #include "main.h"
 
+int compare(Thread* x,Thread* y){
+	return y->priority-x->priority;
+}
 //----------------------------------------------------------------------
 // Scheduler::Scheduler
 // 	Initialize the list of ready but not running threads.
@@ -30,7 +33,7 @@
 //----------------------------------------------------------------------
 
 Scheduler::Scheduler() {
-    readyList = new List<Thread *>;
+    readyList = new SortedList<Thread *>(compare);
     toBeDestroyed = NULL;
 }
 
@@ -54,7 +57,7 @@ void Scheduler::ReadyToRun(Thread *thread) {
     DEBUG(dbgThread, "Putting thread on ready list: " << thread->getName());
 
     thread->setStatus(READY);
-    readyList->Append(thread);
+    readyList->Insert(thread);
 }
 
 //----------------------------------------------------------------------
@@ -73,6 +76,10 @@ Thread *Scheduler::FindNextToRun() {
     } else {
         return readyList->RemoveFront();
     }
+}
+Thread* Scheduler::PeekNextThread() {
+    if (readyList->IsEmpty()) return NULL;
+    return readyList->Front();
 }
 
 //----------------------------------------------------------------------

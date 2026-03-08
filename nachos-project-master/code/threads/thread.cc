@@ -37,6 +37,10 @@ Thread::Thread(char *threadName, bool _has_dynamic_name /*=false*/) {
     has_dynamic_name = _has_dynamic_name;
     name = threadName;
     stackTop = NULL;
+    //srand(35);
+    priority=rand()%10;
+    printf("name:%s priority:%d\n",name,priority);
+
     stack = NULL;
     status = JUST_CREATED;
     for (int i = 0; i < MachineStateSize; i++) {
@@ -193,16 +197,29 @@ void Thread::Finish() {
 //----------------------------------------------------------------------
 
 void Thread::Yield() {
-    Thread *nextThread;
+    //Thread *nextThread;
     IntStatus oldLevel = kernel->interrupt->SetLevel(IntOff);
 
     ASSERT(this == kernel->currentThread);
 
     DEBUG(dbgThread, "Yielding thread: " << name);
+    Thread* nextThread = kernel->scheduler->PeekNextThread();
+    // If no higher priority thread, continue running
+   // if (next == NULL || next->priority <= this->priority) {
+     //   kernel->interrupt->SetLevel(oldLevel);
+     //   return;
+   // }
+   // nextThread = kernel->scheduler->FindNextToRun();
 
-    nextThread = kernel->scheduler->FindNextToRun();
-    if (nextThread != NULL) {
+
+   // if (nextThread != NULL) {
+       // kernel->scheduler->ReadyToRun(this);
+      //  kernel->scheduler->Run(nextThread, FALSE);
+    //}
+   // nextThread = kernel->scheduler->PeekNextToRun();
+    if (nextThread != NULL && nextThread->priority > this->priority) {
         kernel->scheduler->ReadyToRun(this);
+        nextThread = kernel->scheduler->FindNextToRun();
         kernel->scheduler->Run(nextThread, FALSE);
     }
     (void)kernel->interrupt->SetLevel(oldLevel);

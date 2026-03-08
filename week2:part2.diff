@@ -1,0 +1,194 @@
+diff --git a/nachos-project-master/code/test/Makefile b/nachos-project-master/code/test/Makefile
+index a04cd68..3cce005 100644
+--- a/nachos-project-master/code/test/Makefile
++++ b/nachos-project-master/code/test/Makefile
+@@ -112,7 +112,7 @@ ifeq ($(hosttype),unknown)
+ PROGRAMS = unknownhost
+ else
+ # change this if you create a new test program!
+-PROGRAMS =abs add halt shell matmult sort segments test_syscall num_io char_io random str_io ascii bubblesort help create_file open_file readwrite exec test_sem sinhvien voinuoc main
++PROGRAMS = add2 abs add halt shell matmult sort segments test_syscall num_io char_io random str_io ascii bubblesort help create_file open_file readwrite exec test_sem sinhvien voinuoc main
+ endif
+ 
+ all: $(PROGRAMS)
+@@ -132,6 +132,14 @@ add.o: add.c
+ add: add.o start.o
+ 	$(LD) $(LDFLAGS) start.o add.o -o add.coff
+ 	$(COFF2NOFF) add.coff add
++add2.o: add2.c
++	$(CC) $(CFLAGS) -c add2.c
++
++add2: add2.o start.o
++	$(LD) $(LDFLAGS) start.o add2.o -o add2.coff
++	$(COFF2NOFF) add2.coff add2
++
++
+ abs.o: abs.c
+ 	$(CC) $(CFLAGS) -c abs.c
+ 
+diff --git a/nachos-project-master/code/test/add.c b/nachos-project-master/code/test/add.c
+index c4f2b33..fdd738f 100644
+--- a/nachos-project-master/code/test/add.c
++++ b/nachos-project-master/code/test/add.c
+@@ -13,10 +13,10 @@ int main() {
+     for(i=0;i<10;i++){
+ 	    for(j=0;j<10000;j++){
+ 	    }
+-	    PrintString("In Child\n");
++	    PrintString("In Child1\n");
+     }
+    // result = Add(42, 23);
+ 
+-    Halt();
++   // Halt();
+     /* not reached */
+ }
+diff --git a/nachos-project-master/code/test/exec.c b/nachos-project-master/code/test/exec.c
+index 5fb0f29..92ddca2 100644
+--- a/nachos-project-master/code/test/exec.c
++++ b/nachos-project-master/code/test/exec.c
+@@ -7,10 +7,11 @@
+ #define stdout 1
+ 
+ int main() {
+-    int pid;
++    int pid,pid2;
+     int i,j;
+     PrintString("--Starting in Parent--\n");
+     pid = Exec("../test/add");
++    pid2=Exec("../test/add2");
+     if (pid < 0) {
+         Write("Exec failed: ", 14, stdout);
+         PrintNum(pid);
+@@ -21,5 +22,6 @@ int main() {
+ 		    PrintString("In Parent\n");
+ 	    }
+         Join(pid);
++	Join(pid2);
+     }
+ }
+diff --git a/nachos-project-master/code/threads/scheduler.cc b/nachos-project-master/code/threads/scheduler.cc
+index 1d52916..97ace61 100644
+--- a/nachos-project-master/code/threads/scheduler.cc
++++ b/nachos-project-master/code/threads/scheduler.cc
+@@ -23,6 +23,9 @@
+ #include "scheduler.h"
+ #include "main.h"
+ 
++int compare(Thread* x,Thread* y){
++	return y->priority-x->priority;
++}
+ //----------------------------------------------------------------------
+ // Scheduler::Scheduler
+ // 	Initialize the list of ready but not running threads.
+@@ -30,7 +33,7 @@
+ //----------------------------------------------------------------------
+ 
+ Scheduler::Scheduler() {
+-    readyList = new List<Thread *>;
++    readyList = new SortedList<Thread *>(compare);
+     toBeDestroyed = NULL;
+ }
+ 
+@@ -54,7 +57,7 @@ void Scheduler::ReadyToRun(Thread *thread) {
+     DEBUG(dbgThread, "Putting thread on ready list: " << thread->getName());
+ 
+     thread->setStatus(READY);
+-    readyList->Append(thread);
++    readyList->Insert(thread);
+ }
+ 
+ //----------------------------------------------------------------------
+@@ -74,6 +77,10 @@ Thread *Scheduler::FindNextToRun() {
+         return readyList->RemoveFront();
+     }
+ }
++Thread* Scheduler::PeekNextThread() {
++    if (readyList->IsEmpty()) return NULL;
++    return readyList->Front();
++}
+ 
+ //----------------------------------------------------------------------
+ // Scheduler::Run
+diff --git a/nachos-project-master/code/threads/scheduler.h b/nachos-project-master/code/threads/scheduler.h
+index a96f228..920ed6e 100644
+--- a/nachos-project-master/code/threads/scheduler.h
++++ b/nachos-project-master/code/threads/scheduler.h
+@@ -26,6 +26,7 @@ class Scheduler {
+     // Thread can be dispatched.
+     Thread* FindNextToRun();  // Dequeue first thread on the ready
+                               // list, if any, and return thread.
++    Thread* PeekNextThread();
+     void Run(Thread* nextThread, bool finishing);
+     // Cause nextThread to start running
+     void CheckToBeDestroyed();  // Check if thread that had been
+@@ -35,7 +36,7 @@ class Scheduler {
+     // SelfTest for scheduler is implemented in class Thread
+ 
+    private:
+-    List<Thread*>* readyList;  // queue of threads that are ready to run,
++    SortedList<Thread*>* readyList;  // queue of threads that are ready to run,
+                                // but not running
+     Thread* toBeDestroyed;     // finishing thread to be destroyed
+                                // by the next thread that runs
+diff --git a/nachos-project-master/code/threads/thread.cc b/nachos-project-master/code/threads/thread.cc
+index be9f7d6..2d327ae 100644
+--- a/nachos-project-master/code/threads/thread.cc
++++ b/nachos-project-master/code/threads/thread.cc
+@@ -37,6 +37,10 @@ Thread::Thread(char *threadName, bool _has_dynamic_name /*=false*/) {
+     has_dynamic_name = _has_dynamic_name;
+     name = threadName;
+     stackTop = NULL;
++    //srand(35);
++    priority=rand()%10;
++    printf("name:%s priority:%d\n",name,priority);
++
+     stack = NULL;
+     status = JUST_CREATED;
+     for (int i = 0; i < MachineStateSize; i++) {
+@@ -193,16 +197,29 @@ void Thread::Finish() {
+ //----------------------------------------------------------------------
+ 
+ void Thread::Yield() {
+-    Thread *nextThread;
++    //Thread *nextThread;
+     IntStatus oldLevel = kernel->interrupt->SetLevel(IntOff);
+ 
+     ASSERT(this == kernel->currentThread);
+ 
+     DEBUG(dbgThread, "Yielding thread: " << name);
+-
+-    nextThread = kernel->scheduler->FindNextToRun();
+-    if (nextThread != NULL) {
++    Thread* nextThread = kernel->scheduler->PeekNextThread();
++    // If no higher priority thread, continue running
++   // if (next == NULL || next->priority <= this->priority) {
++     //   kernel->interrupt->SetLevel(oldLevel);
++     //   return;
++   // }
++   // nextThread = kernel->scheduler->FindNextToRun();
++
++
++   // if (nextThread != NULL) {
++       // kernel->scheduler->ReadyToRun(this);
++      //  kernel->scheduler->Run(nextThread, FALSE);
++    //}
++   // nextThread = kernel->scheduler->PeekNextToRun();
++    if (nextThread != NULL && nextThread->priority > this->priority) {
+         kernel->scheduler->ReadyToRun(this);
++        nextThread = kernel->scheduler->FindNextToRun();
+         kernel->scheduler->Run(nextThread, FALSE);
+     }
+     (void)kernel->interrupt->SetLevel(oldLevel);
+diff --git a/nachos-project-master/code/threads/thread.h b/nachos-project-master/code/threads/thread.h
+index 3fbf156..f94cc5f 100644
+--- a/nachos-project-master/code/threads/thread.h
++++ b/nachos-project-master/code/threads/thread.h
+@@ -90,6 +90,7 @@ class Thread {
+     int processID;
+     int parrentID;
+     int exitStatus;
++    int priority;
+     void FreeSpace() {
+         if (space != 0) delete space;
+     }

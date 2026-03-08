@@ -13,10 +13,10 @@ int main() {
     for(i=0;i<10;i++){
 	    for(j=0;j<10000;j++){
 	    }
-	    PrintString("In Child\n");
+	    PrintString("In Child1\n");
     }
    // result = Add(42, 23);
 
-    Halt();
+   // Halt();
     /* not reached */
 }
