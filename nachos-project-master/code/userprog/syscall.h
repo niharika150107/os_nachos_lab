@@ -50,6 +50,15 @@
 #define SC_GetPid 54
 #define SC_Abs 55
 #define SC_Sleep 56
+#define SC_Pipe 57
+#define SC_PipeRead  58
+#define SC_PipeWrite 59
+#define SC_ExecP     60
+#define SC_ReadInt   61
+#define SC_GetPD     62
+
+
+
 
 #ifndef IN_ASM
 
@@ -74,6 +83,16 @@ int Add(int op1, int op2);
 void Sleep(int time);
 
 int ReadNum();
+
+int GetPD();
+
+int ReadInt(char *buffer);
+
+void Pipe(int *x, int *y);
+
+int pipeRead(int desNum, char *buffer, int charCount);
+
+int pipeWrite(int desNum, char *buffer, int charCount);
 
 void PrintNum(int num);
 
@@ -101,6 +120,7 @@ typedef int ThreadId;
 /* Run the specified executable, with no args */
 /* This can be implemented as a call to ExecV.
  */
+SpaceId ExecP(char *exec_name, int pDes);
 SpaceId Exec(char *exec_name);
 
 /* Run the executable, stored in the Nachos file "argv[0]", with

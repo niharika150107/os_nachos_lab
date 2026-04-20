@@ -1,6 +1,8 @@
 #include "synch.h"
 #include "pcb.h"
 
+
+void StartProcess_2(void* pid);
 PCB::PCB(int id) {
     this->processID = kernel->currentThread->processID;
     joinsem = new Semaphore("joinsem", 0);
@@ -20,6 +22,20 @@ PCB::~PCB() {
     }
 
     delete[] filename;
+}
+
+int PCB::Exec(char* filename, int id, int pDes) {
+    multex->P();
+    this->thread = new Thread(filename, pDes, true);
+    if (this->thread == NULL) {
+        multex->V();
+        return -1;
+    }
+    this->thread->processID = id;
+    this->parentID = kernel->currentThread->processID;
+    this->thread->Fork(StartProcess_2, &this->thread->processID);
+    multex->V();
+    return id;
 }
 
 void StartProcess_2(void* pid) {

@@ -15,6 +15,29 @@
 #include "synchconsole.h"
 #include "ksyscallhelper.h"
 #include <stdlib.h>
+#include "machine.h"
+#include "thread.h"
+#include "thread.h"
+
+
+
+int SysExecP(char* name,int pDes) {
+    OpenFile* ofile = kernel->fileSystem->Open(name);
+    if(ofile == NULL) {
+        DEBUG(dbgSys, "\nExec:: Can't open this file.");
+        return -1;
+    }
+    delete ofile;
+    return kernel->pTab->ExecUpdate(name,pDes);
+}
+
+int SysPipe(int* x,int*y){
+    int result = kernel->pipeDes->createDes(x,y,"pipe");
+    return result;
+}
+
+int SysGetPD(){
+    return kernel->currentThread->pipeDesNum;}
 
 void SysHalt() { kernel->interrupt->Halt(); }
 

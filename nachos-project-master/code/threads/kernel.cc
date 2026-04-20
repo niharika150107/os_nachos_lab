@@ -93,6 +93,7 @@ void Kernel::Initialize(char *userProgName /*=NULL*/) {
 
     stats = new Statistics();        // collect statistics
     interrupt = new Interrupt;       // start up interrupt handling
+    pipeDes = new PipeDescriptors();
     scheduler = new Scheduler();     // initialize the ready queue
     alarm = new Alarm(randomSlice);  // start up time slicing
     machine = new Machine(debugUserProg);
