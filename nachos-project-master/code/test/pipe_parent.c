@@ -8,7 +8,7 @@ int main() {
     char *msg;
 
     /* 2. Then statements */
-    msg = "Hello from parent!";
+    msg = "Hello from parent!\n";
     
     Pipe(&readDes, &writeDes);
     pipeWrite(writeDes, msg, 18);

@@ -1,0 +1,39 @@
+diff --git a/nachos-project-master/code/build.linux/pipe_child b/nachos-project-master/code/build.linux/pipe_child
+index be01157..9039aa9 100644
+Binary files a/nachos-project-master/code/build.linux/pipe_child and b/nachos-project-master/code/build.linux/pipe_child differ
+diff --git a/nachos-project-master/code/test/pipe_child.c b/nachos-project-master/code/test/pipe_child.c
+index 74d0528..7002c03 100644
+--- a/nachos-project-master/code/test/pipe_child.c
++++ b/nachos-project-master/code/test/pipe_child.c
+@@ -3,13 +3,17 @@
+ int main() {
+     /* ALL declarations at top */
+     int myDes;
++    int i;
+     char buf[256];
+ 
+     myDes = GetPD();   /* get the pipe descriptor passed from parent */
+     pipeRead(myDes, buf, 18);
+     
+     /* do something with buf */
+-    
++    /* Print what we received */
++    for(i = 0; i < 18; i++) {
++        PrintChar(buf[i]);
++    }
+     Halt();
+     return 0;
+ }
+diff --git a/nachos-project-master/code/test/pipe_parent.c b/nachos-project-master/code/test/pipe_parent.c
+index 9d1e813..e9aa44a 100644
+--- a/nachos-project-master/code/test/pipe_parent.c
++++ b/nachos-project-master/code/test/pipe_parent.c
+@@ -8,7 +8,7 @@ int main() {
+     char *msg;
+ 
+     /* 2. Then statements */
+-    msg = "Hello from parent!";
++    msg = "Hello from parent!\n";
+     
+     Pipe(&readDes, &writeDes);
+     pipeWrite(writeDes, msg, 18);
