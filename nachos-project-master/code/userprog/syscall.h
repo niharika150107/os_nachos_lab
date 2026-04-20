@@ -56,7 +56,7 @@
 #define SC_ExecP     60
 #define SC_ReadInt   61
 #define SC_GetPD     62
-
+#define SC_GetPageFaults 63
 
 
 
@@ -85,6 +85,8 @@ void Sleep(int time);
 int ReadNum();
 
 int GetPD();
+
+int GetPageFaults();
 
 int ReadInt(char *buffer);
 

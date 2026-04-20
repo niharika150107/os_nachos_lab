@@ -64,7 +64,8 @@ char* stringUser2System(int addr, int convert_length = -1) {
 
     do {
         int oneChar;
-        kernel->machine->ReadMem(addr + length, 1, &oneChar);
+    //    kernel->machine->ReadMem(addr + length, 1, &oneChar);
+    	while(!kernel->machine->ReadMem(addr + length, 1, &oneChar));
         length++;
         // if convert_length == -1, we use '\0' to terminate the process
         // otherwise, we use convert_length to terminate the process
@@ -75,8 +76,10 @@ char* stringUser2System(int addr, int convert_length = -1) {
     str = new char[length];
     for (int i = 0; i < length; i++) {
         int oneChar;
-        kernel->machine->ReadMem(addr + i, 1,
-                                 &oneChar);  // copy characters to kernel space
+	while(!kernel->machine->ReadMem(addr + i, 1,
+                                 &oneChar));
+        //kernel->machine->ReadMem(addr + i, 1,
+        //                         &oneChar);  // copy characters to kernel space
         str[i] = (unsigned char)oneChar;
     }
     return str;
@@ -94,10 +97,13 @@ char* stringUser2System(int addr, int convert_length = -1) {
 void StringSys2User(char* str, int addr, int convert_length = -1) {
     int length = (convert_length == -1 ? strlen(str) : convert_length);
     for (int i = 0; i < length; i++) {
-        kernel->machine->WriteMem(addr + i, 1,
-                                  str[i]);  // copy characters to user space
+	    while(!kernel->machine->WriteMem(addr + i, 1,
+  				    str[i]));
+       // kernel->machine->WriteMem(addr + i, 1,
+       //                           str[i]);  // copy characters to user space
     }
-    kernel->machine->WriteMem(addr + length, 1, '\0');
+    //kernel->machine->WriteMem(addr + length, 1, '\0');
+    while(!kernel->machine->WriteMem(addr + length, 1, '\0'));
 }
 
 /**
@@ -406,7 +412,10 @@ void handle_SC_GetPD(){
     kernel->machine->WriteRegister(2, SysGetPD());
     return move_program_counter();
 }
-
+void handle_SC_GetPageFaults() {
+    kernel->machine->WriteRegister(2, kernel->stats->numPageFaults);
+    return move_program_counter();
+}
 void handle_SC_ReadInt() {
     int virtAddr = kernel->machine->ReadRegister(4);
     char* buf = stringUser2System(virtAddr);
@@ -500,6 +509,14 @@ void ExceptionHandler(ExceptionType which) {
             DEBUG(dbgSys, "Switch to system mode\n");
             break;
         case PageFaultException:
+	    {
+		    int faultingAddr=kernel->machine->ReadRegister(BadVAddrReg);
+		    kernel->stats->numPageFaults++;
+		    DEBUG(dbgAddr, "Page Fault at " << faultingAddr << "\n");
+		    kernel->currentThread->space->LoadPage(faultingAddr);
+		    kernel->currentThread->space->RestoreState();
+		    return;
+	    }
         case ReadOnlyException:
         case BusErrorException:
         case AddressErrorException:
@@ -530,6 +547,8 @@ void ExceptionHandler(ExceptionType which) {
                     return handle_SC_PipeWrite();
                 case SC_GetPD:
                     return handle_SC_GetPD();
+		case SC_GetPageFaults:
+                    return handle_SC_GetPageFaults();
                 case SC_ReadInt:
                     return handle_SC_ReadInt();
                 case SC_ReadNum:
